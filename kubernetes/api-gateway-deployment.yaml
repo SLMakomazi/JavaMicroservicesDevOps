@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: microservices
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+      - name: api-gateway
+        image: springcloud/spring-cloud-gateway:3.1.5
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_APPLICATION_NAME
+          value: api-gateway
+        - name: SPRING_CLOUD_GATEWAY_ROUTES
+          value: |
+            - id: user-service
+              uri: lb://user-service
+              predicates:
+              - Path=/api/users/**
+              filters:
+              - StripPrefix=1
+
+            - id: order-service
+              uri: lb://order-service
+              predicates:
+              - Path=/api/orders/**
+              filters:
+              - StripPrefix=1

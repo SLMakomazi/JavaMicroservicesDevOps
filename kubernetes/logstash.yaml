@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-config
+  namespace: logging
+data:
+  logstash.conf: |
+    input {
+      file {
+        path => "/var/log/containers/*.log"
+        start_position => "beginning"
+        sincedb_path => "/usr/share/logstash/sincedb"
+        codec => json
+      }
+    }
+    filter {
+      json {
+        source => "message"
+      }
+      mutate {
+        remove_field => ["message"]
+      }
+    }
+    output {
+      elasticsearch {
+        hosts => ["http://elasticsearch:9200"]
+        index => "logs-%{+YYYY.MM.dd}"
+      }
+    }
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+  namespace: logging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      containers:
+      - name: logstash
+        image: docker.elastic.co/logstash/logstash:7.17.0
+        volumeMounts:
+        - name: config-volume
+          mountPath: /usr/share/logstash/config
+        - name: sincedb-volume
+          mountPath: /usr/share/logstash/sincedb
+      volumes:
+      - name: config-volume
+        configMap:
+          name: logstash-config
+      - name: sincedb-volume
+        persistentVolumeClaim:
+          claimName: logstash-pvc

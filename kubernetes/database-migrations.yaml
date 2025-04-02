@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: userdb-migrations
+  namespace: microservices
+spec:
+  template:
+    spec:
+      containers:
+      - name: migrations
+        image: postgres:15
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          until PGPASSWORD=postgres psql -h postgresql -U postgres -d userdb -c '\q'; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          PGPASSWORD=postgres psql -h postgresql -U postgres -d userdb -f /sql/user-migrations.sql
+      restartPolicy: Never
+  backoffLimit: 4
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: orderdb-migrations
+  namespace: microservices
+spec:
+  template:
+    spec:
+      containers:
+      - name: migrations
+        image: postgres:15
+        command: ["/bin/bash", "-c"]
+        args:
+        - |
+          until PGPASSWORD=postgres psql -h postgresql -U postgres -d orderdb -c '\q'; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          PGPASSWORD=postgres psql -h postgresql -U postgres -d orderdb -f /sql/order-migrations.sql
+      restartPolicy: Never
+  backoffLimit: 4
